@@ -11,6 +11,7 @@ import com.live2d.sdk.cubism.framework.motion.CubismExpressionMotionManager;
 import com.live2d.sdk.cubism.framework.motion.CubismMotion;
 import com.live2d.sdk.cubism.framework.motion.CubismPhysicsUpdater;
 import com.live2d.sdk.cubism.framework.motion.CubismPoseUpdater;
+import com.live2d.sdk.cubism.framework.motion.CubismUpdateOrder;
 import com.live2d.sdk.cubism.framework.rendering.android.CubismRendererAndroid;
 
 import java.io.File;
@@ -32,6 +33,7 @@ final class WhaleLive2DModel extends CubismUserModel implements WhaleReactionEng
     private File homeDirectory;
     private String idleMotionId = "";
     private String currentMotionId = "";
+    private final WhaleIdleController idleController = new WhaleIdleController();
 
     void load(WhaleCatalog requestedCatalog, int width, int height,
               NativeTextureManager textures, WhaleRenderer.Listener listener) throws IOException {
@@ -64,7 +66,6 @@ final class WhaleLive2DModel extends CubismUserModel implements WhaleReactionEng
         listener.onStatus("正在创建透明 OpenGL 渲染器…");
         setupNativeRenderer(width, height);
         setupTextures(textures, listener);
-        startIdle();
     }
 
     void reloadRenderer(int width, int height, NativeTextureManager textures,
@@ -77,7 +78,6 @@ final class WhaleLive2DModel extends CubismUserModel implements WhaleReactionEng
     void update(float deltaSeconds) {
         if (model == null) return;
         model.loadParameters();
-        if (motionManager.isFinished()) startIdle();
         updateScheduler.onLateUpdate(model, Math.max(0.0f, Math.min(0.05f, deltaSeconds)));
         model.update();
     }
@@ -146,10 +146,15 @@ final class WhaleLive2DModel extends CubismUserModel implements WhaleReactionEng
         WhaleReactionEngine.apply(id, this);
     }
 
+    void setIdleMode(WhaleIdleController.Mode mode) {
+        idleController.setMode(mode);
+    }
+
     void resetAll() {
         resetExpressions();
         motionManager.stopAllMotions();
         currentMotionId = "";
+        idleController.reset();
     }
 
     void closeModel() {
@@ -158,7 +163,8 @@ final class WhaleLive2DModel extends CubismUserModel implements WhaleReactionEng
 
     String readyDetail() {
         return catalog.expressions.size() + "个表情 · " + catalog.motions.size()
-                + "个动作 · 待机循环 " + (idleMotionId.isEmpty() ? "未找到" : "已启用");
+                + "个动作 · 灵动待机 " + idleController.getMode().label
+                + " · 原生idle " + (idleMotionId.isEmpty() ? "未找到" : "手动保留");
     }
 
     private void loadExpressions(WhaleRenderer.Listener listener) throws IOException {
@@ -201,6 +207,15 @@ final class WhaleLive2DModel extends CubismUserModel implements WhaleReactionEng
                 motionManager.updateMotion(target, deltaTimeSeconds);
             }
         });
+        updateScheduler.addUpdatableList(new ACubismUpdater(CubismUpdateOrder.LOOK.order) {
+            @Override
+            public void onLateUpdate(
+                    com.live2d.sdk.cubism.framework.model.CubismModel target,
+                    float deltaTimeSeconds) {
+                idleController.update(target, deltaTimeSeconds, !motionManager.isFinished());
+                if (motionManager.isFinished()) currentMotionId = "";
+            }
+        });
     }
 
     private void loadPhysicsAndPose(WhaleRenderer.Listener listener) throws IOException {
@@ -217,16 +232,6 @@ final class WhaleLive2DModel extends CubismUserModel implements WhaleReactionEng
             loadPose(NativeFileLoader.readFile(child(poseName)));
             if (pose != null) updateScheduler.addUpdatableList(new CubismPoseUpdater(pose));
         }
-    }
-
-    private void startIdle() {
-        if (idleMotionId.isEmpty() || idleMotionId.equals(currentMotionId)
-                && !motionManager.isFinished()) return;
-        CubismMotion idle = motions.get(idleMotionId);
-        if (idle == null) return;
-        idle.setLoop(true);
-        currentMotionId = idleMotionId;
-        motionManager.startMotionPriority(idle, 1);
     }
 
     private void setupNativeRenderer(int width, int height) {

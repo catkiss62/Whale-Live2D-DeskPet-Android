@@ -69,6 +69,10 @@ final class WhaleRenderer implements GLSurfaceView.Renderer {
         if (model != null) model.applyReaction(id);
     }
 
+    void setIdleMode(WhaleIdleController.Mode mode) {
+        if (model != null) model.setIdleMode(mode);
+    }
+
     void resetAll() {
         if (model != null) model.resetAll();
     }

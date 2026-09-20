@@ -70,6 +70,10 @@ public final class WhaleView extends GLSurfaceView {
         queueRenderer(() -> renderer.applyReaction(id));
     }
 
+    public void setIdleMode(WhaleIdleController.Mode mode) {
+        queueRenderer(() -> renderer.setIdleMode(mode));
+    }
+
     public void resetAll() {
         queueRenderer(renderer::resetAll);
     }

@@ -30,7 +30,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public final class MainActivity extends AppCompatActivity implements WhaleView.Listener {
-    private static final String VERSION = "v0.1.0 · 原生目录与悬浮桌宠测试";
+    private static final String VERSION = "v0.2.0 · 中文目录与灵动待机测试";
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private WhaleView whaleView;
     private TextView status;
@@ -196,10 +196,25 @@ public final class MainActivity extends AppCompatActivity implements WhaleView.L
             catalogSummary.setText("尚未导入模型；仓库与 APK 均不包含购买素材。");
             return;
         }
+        if (catalog.hasCorruptNames()) {
+            catalogSummary.setText("检测到 v0.1.0 留下的乱码模型目录。请点击顶部“导入ZIP”重新导入一次；修复后的文件名才能匹配陪玩反应。");
+            return;
+        }
+        int available = WhaleReactionEngine.availableCount(catalog);
         catalogSummary.setText("已扫描 " + catalog.expressions.size() + " 个原生表情 / "
-                + catalog.motions.size() + " 个原生动作；idle 自动循环，其余动作单次播放。");
+                + catalog.motions.size() + " 个原生动作；陪玩映射 " + available + "/"
+                + WhaleReactionEngine.REACTIONS.size() + "。原生 idle 保留为手动动作。");
 
-        catalogArea.addView(heading("13类陪玩反应（预览与已开启桌宠同步）"));
+        catalogArea.addView(heading("灵动待机强度（原生动作播放时自动暂停）"));
+        LinearLayout idleRow = new LinearLayout(this);
+        idleRow.setOrientation(LinearLayout.HORIZONTAL);
+        addIdleButton(idleRow, "关闭", WhaleIdleController.Mode.OFF);
+        addIdleButton(idleRow, "自然", WhaleIdleController.Mode.NATURAL);
+        addIdleButton(idleRow, "活泼", WhaleIdleController.Mode.LIVELY);
+        catalogArea.addView(idleRow);
+        catalogArea.addView(note("默认“自然”：缓慢转头、视线、身体跟随、呼吸与随机眨眼；可用三档直接做真机 A/B 对比。"));
+
+        catalogArea.addView(heading("13类陪玩反应（当前可用 " + available + "/13）"));
         addReactionGrid(WhaleReactionEngine.REACTIONS);
         Button reset = button("还原全部表情与动作");
         reset.setOnClickListener(v -> {
@@ -208,7 +223,7 @@ public final class MainActivity extends AppCompatActivity implements WhaleView.L
         });
         catalogArea.addView(reset);
 
-        catalogArea.addView(heading("模型原生动作（idle循环，其余强制单次）"));
+        catalogArea.addView(heading("模型原生动作（均为单次，idle也可手动测试）"));
         addEntryGrid(catalog.motions, false);
         catalogArea.addView(heading("模型原生表情/道具（再次点击关闭）"));
         addEntryGrid(catalog.expressions, true);
@@ -225,7 +240,9 @@ public final class MainActivity extends AppCompatActivity implements WhaleView.L
                     continue;
                 }
                 WhaleReactionEngine.Reaction reaction = reactions.get(index);
-                Button item = button(reaction.label);
+                boolean available = WhaleReactionEngine.isAvailable(reaction, catalog);
+                Button item = button(available ? reaction.label : reaction.label + "（缺文件）");
+                item.setEnabled(available);
                 item.setOnClickListener(v -> {
                     whaleView.applyReaction(reaction.id);
                     if (overlayRequested) OverlayPetService.react(this, reaction.id);
@@ -234,6 +251,15 @@ public final class MainActivity extends AppCompatActivity implements WhaleView.L
             }
             catalogArea.addView(row);
         }
+    }
+
+    private void addIdleButton(LinearLayout row, String label, WhaleIdleController.Mode mode) {
+        Button item = button(label);
+        item.setOnClickListener(v -> {
+            whaleView.setIdleMode(mode);
+            setStatus("灵动待机已切换为：" + mode.label);
+        });
+        row.addView(item, weighted());
     }
 
     private void addEntryGrid(List<WhaleCatalog.Entry> entries, boolean expression) {
@@ -292,7 +318,8 @@ public final class MainActivity extends AppCompatActivity implements WhaleView.L
 
     @Override
     public void onReady(String detail) {
-        runOnUiThread(() -> setStatus(detail));
+        runOnUiThread(() -> setStatus(catalog != null && catalog.hasCorruptNames()
+                ? "旧版模型目录文件名已损坏，请重新导入ZIP" : detail));
     }
 
     @Override

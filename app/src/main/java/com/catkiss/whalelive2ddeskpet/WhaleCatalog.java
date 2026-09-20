@@ -59,6 +59,12 @@ final class WhaleCatalog {
         return find(motions, id);
     }
 
+    boolean hasCorruptNames() {
+        for (Entry entry : expressions) if (entry.id.indexOf('\uFFFD') >= 0) return true;
+        for (Entry entry : motions) if (entry.id.indexOf('\uFFFD') >= 0) return true;
+        return false;
+    }
+
     private static Entry find(List<Entry> entries, String id) {
         if (id == null) return null;
         for (Entry entry : entries) if (entry.id.equals(id)) return entry;

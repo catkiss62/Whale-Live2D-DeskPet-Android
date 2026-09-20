@@ -17,7 +17,7 @@ final class WhaleReactionEngine {
 
     static final List<Reaction> REACTIONS = Collections.unmodifiableList(Arrays.asList(
             reaction("hello", "打招呼", "开心兴奋", "motions/自拍简单"),
-            reaction("celebrate", "开心庆祝", "开心兴奋", "双手比耶"),
+            reaction("celebrate", "开心庆祝", "开心兴奋|双手比耶", ""),
             reaction("affection", "喜欢你", "爱心眼|love", ""),
             reaction("shy", "害羞", "脸红|情绪花花", ""),
             reaction("curious", "疑惑", "问号", ""),
@@ -45,6 +45,20 @@ final class WhaleReactionEngine {
         if (id == null) return null;
         for (Reaction reaction : REACTIONS) if (reaction.id.equals(id)) return reaction;
         return null;
+    }
+
+    static boolean isAvailable(Reaction reaction, WhaleCatalog catalog) {
+        if (reaction == null || catalog == null) return false;
+        for (String expression : reaction.expressions) {
+            if (catalog.expression(expression) == null) return false;
+        }
+        return reaction.motionId.isEmpty() || catalog.motion(reaction.motionId) != null;
+    }
+
+    static int availableCount(WhaleCatalog catalog) {
+        int count = 0;
+        for (Reaction reaction : REACTIONS) if (isAvailable(reaction, catalog)) count++;
+        return count;
     }
 
     private static Reaction reaction(String id, String label,

@@ -7,6 +7,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -84,7 +85,7 @@ final class WhaleModelImporter {
             byte[] buffer = new byte[64 * 1024];
             while ((entry = zip.getNextEntry()) != null) {
                 if (++entries > MAX_ENTRIES) throw new IOException("ZIP 文件数量异常");
-                File output = new File(destination, entry.getName());
+                File output = new File(destination, resolvedEntryName(entry));
                 String path = output.getCanonicalPath();
                 if (!path.startsWith(root)) throw new IOException("ZIP 路径不安全");
                 if (entry.isDirectory()) {
@@ -109,6 +110,35 @@ final class WhaleModelImporter {
                 }
             }
         }
+    }
+
+    /**
+     * The purchased archives store legacy-encoded names in the ZIP header and the correct UTF-8
+     * name in Info-ZIP's Unicode Path extra field (0x7075). Android's default ZipInputStream
+     * otherwise replaces those Chinese bytes with U+FFFD, which also breaks reaction ID lookup.
+     */
+    static String resolvedEntryName(ZipEntry entry) {
+        byte[] extra = entry.getExtra();
+        if (extra == null) return entry.getName();
+        for (int offset = 0; offset + 4 <= extra.length;) {
+            int headerId = littleEndian16(extra, offset);
+            int dataSize = littleEndian16(extra, offset + 2);
+            int dataOffset = offset + 4;
+            int next = dataOffset + dataSize;
+            if (next > extra.length) break;
+            // version(1) + name CRC32(4) + UTF-8 path
+            if (headerId == 0x7075 && dataSize > 5 && extra[dataOffset] == 1) {
+                String unicode = new String(extra, dataOffset + 5, dataSize - 5,
+                        StandardCharsets.UTF_8);
+                if (!unicode.isEmpty() && unicode.indexOf('\uFFFD') < 0) return unicode;
+            }
+            offset = next;
+        }
+        return entry.getName();
+    }
+
+    private static int littleEndian16(byte[] value, int offset) {
+        return (value[offset] & 0xFF) | ((value[offset + 1] & 0xFF) << 8);
     }
 
     private static File chooseNestedZip(File root) {

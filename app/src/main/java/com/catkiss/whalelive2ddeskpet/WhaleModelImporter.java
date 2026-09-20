@@ -7,6 +7,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,6 +22,7 @@ final class WhaleModelImporter {
 
     private static final long MAX_EXTRACTED_BYTES = 600_000_000L;
     private static final int MAX_ENTRIES = 5_000;
+    private static final Charset LEGACY_ZIP_CHARSET = Charset.forName("GB18030");
 
     private WhaleModelImporter() { }
 
@@ -80,7 +82,10 @@ final class WhaleModelImporter {
         String root = destination.getCanonicalPath() + File.separator;
         long total = 0L;
         int entries = 0;
-        try (ZipInputStream zip = new ZipInputStream(raw)) {
+        // The mouse-model ZIP uses GBK/GB18030 bytes without the UTF-8 flag. UTF-8 entries still
+        // follow their own ZIP flag, while this charset makes the legacy-name fallback reliable on
+        // Android builds that do not expose the Info-ZIP Unicode Path extra field to ZipEntry.
+        try (ZipInputStream zip = new ZipInputStream(raw, LEGACY_ZIP_CHARSET)) {
             ZipEntry entry;
             byte[] buffer = new byte[64 * 1024];
             while ((entry = zip.getNextEntry()) != null) {

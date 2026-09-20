@@ -30,7 +30,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public final class MainActivity extends AppCompatActivity implements WhaleView.Listener {
-    private static final String VERSION = "v0.2.0 · 中文目录与灵动待机测试";
+    private static final String VERSION = "v0.2.1 · 完整按钮与中文目录测试";
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private WhaleView whaleView;
     private TextView status;
@@ -196,14 +196,16 @@ public final class MainActivity extends AppCompatActivity implements WhaleView.L
             catalogSummary.setText("尚未导入模型；仓库与 APK 均不包含购买素材。");
             return;
         }
-        if (catalog.hasCorruptNames()) {
-            catalogSummary.setText("检测到 v0.1.0 留下的乱码模型目录。请点击顶部“导入ZIP”重新导入一次；修复后的文件名才能匹配陪玩反应。");
-            return;
-        }
+        boolean corruptNames = catalog.hasCorruptNames();
         int available = WhaleReactionEngine.availableCount(catalog);
-        catalogSummary.setText("已扫描 " + catalog.expressions.size() + " 个原生表情 / "
-                + catalog.motions.size() + " 个原生动作；陪玩映射 " + available + "/"
-                + WhaleReactionEngine.REACTIONS.size() + "。原生 idle 保留为手动动作。");
+        if (corruptNames) {
+            catalogSummary.setText("已扫描 " + catalog.expressions.size() + " 个原生表情 / "
+                    + catalog.motions.size() + " 个原生动作，但这是旧版乱码目录。全部原生按钮已按编号保留且可测试；重新导入ZIP后恢复中文名称与13类反应。");
+        } else {
+            catalogSummary.setText("已扫描 " + catalog.expressions.size() + " 个原生表情 / "
+                    + catalog.motions.size() + " 个原生动作；陪玩映射 " + available + "/"
+                    + WhaleReactionEngine.REACTIONS.size() + "。原生 idle 保留为手动动作。");
+        }
 
         catalogArea.addView(heading("灵动待机强度（原生动作播放时自动暂停）"));
         LinearLayout idleRow = new LinearLayout(this);
@@ -224,9 +226,9 @@ public final class MainActivity extends AppCompatActivity implements WhaleView.L
         catalogArea.addView(reset);
 
         catalogArea.addView(heading("模型原生动作（均为单次，idle也可手动测试）"));
-        addEntryGrid(catalog.motions, false);
+        addEntryGrid(catalog.motions, false, corruptNames);
         catalogArea.addView(heading("模型原生表情/道具（再次点击关闭）"));
-        addEntryGrid(catalog.expressions, true);
+        addEntryGrid(catalog.expressions, true, corruptNames);
     }
 
     private void addReactionGrid(List<WhaleReactionEngine.Reaction> reactions) {
@@ -241,7 +243,7 @@ public final class MainActivity extends AppCompatActivity implements WhaleView.L
                 }
                 WhaleReactionEngine.Reaction reaction = reactions.get(index);
                 boolean available = WhaleReactionEngine.isAvailable(reaction, catalog);
-                Button item = button(available ? reaction.label : reaction.label + "（缺文件）");
+                Button item = button(available ? reaction.label : reaction.label + "（重导入后）");
                 item.setEnabled(available);
                 item.setOnClickListener(v -> {
                     whaleView.applyReaction(reaction.id);
@@ -262,7 +264,8 @@ public final class MainActivity extends AppCompatActivity implements WhaleView.L
         row.addView(item, weighted());
     }
 
-    private void addEntryGrid(List<WhaleCatalog.Entry> entries, boolean expression) {
+    private void addEntryGrid(List<WhaleCatalog.Entry> entries, boolean expression,
+                              boolean numberedLabels) {
         for (int start = 0; start < entries.size(); start += 3) {
             LinearLayout row = new LinearLayout(this);
             row.setOrientation(LinearLayout.HORIZONTAL);
@@ -273,7 +276,11 @@ public final class MainActivity extends AppCompatActivity implements WhaleView.L
                     continue;
                 }
                 WhaleCatalog.Entry entry = entries.get(index);
-                Button item = button(entry.label());
+                String label = numberedLabels
+                        ? (expression ? "表情/道具 " : "动作 ")
+                        + String.format(java.util.Locale.ROOT, "%02d", index + 1)
+                        : entry.label();
+                Button item = button(label);
                 item.setTextSize(9);
                 item.setOnClickListener(v -> {
                     if (expression) whaleView.toggleExpression(entry.id);

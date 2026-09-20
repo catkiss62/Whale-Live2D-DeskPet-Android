@@ -1,0 +1,17 @@
+.gradle/
+.idea/
+build/
+app/build/
+local.properties
+*.iml
+__pycache__/
+*.py[cod]
+dist/
+package/
+*.zip
+*.moc3
+*.model3.json
+*.physics3.json
+*.exp3.json
+*.motion3.json
+*.png

@@ -32,7 +32,7 @@
 - [x] Cubism Core AAR SHA-256：`3f05da57ab855e803000e6353888dd561c47758598c6c0200dcd0109312705f8`。
 - [x] 公开测试 debug keystore SHA-256：`52ad5de65ba4159e336b72971e42a3e211718ed7c8179d935fe3d7bc1e745830`。
 
-## v0.1.0-native-catalog（已制作，待Actions与实机确认）
+## v0.1.0-native-catalog（已构建，待实机确认）
 
 - [x] Android/Cubism Java 5 R5 工程骨架、Core AAR、Framework子模块、无mipmap纹理补丁和公开测试签名。
 - [x] 支持直接内层 ZIP 与外层嵌套 ZIP，优先选择鼠控版；安全限制路径、条目数和解压总量。
@@ -40,13 +40,20 @@
 - [x] idle持续循环，其他动作单次播放并自动恢复idle；表情独立开关和一键还原。
 - [x] 13类陪玩语义反应独立封装，后续可替换组合而不拆渲染器。
 - [x] 系统悬浮桌宠服务、透明GL窗口、拖动、轻点反应、前台通知与关闭入口。
-- [ ] GitHub Actions完整编译成功并校验APK。
+- [x] GitHub Actions完整编译成功并校验APK。
 - [ ] 目标手机确认内层/外层导入、44/8目录、画面、物理、动作、表情和13反应。
 - [ ] 目标手机确认悬浮窗授权、桌宠透明度、拖动、触摸、前后台与关闭流程。
 
+## 构建证据
+
+- 远端功能提交：`cce29a5074919bbc11bad0d11e7bfbf6f5ec9bdd`（Git 树 `d9a121e17747963cb75be8131a21fa6246a4a6c3`）。
+- GitHub Actions：run `35516357402`，`assembleDebug` 与 APK artifact 上传均为 `success`。
+- Artifact：`Whale-Live2D-DeskPet-Test-APK`，ID `10607096383`。
+- Artifact ZIP SHA-256：`6f1ea8f96bf658c0141daa8f9539d0bea6958873523bdb869a060d924844a287`（与 GitHub artifact digest 一致）。
+- `app-debug.apk` SHA-256：`521a1a0711e7e8bdc778cbe32d7ae39882586528e8cf9c352cd46dce9387a0cb`。
+- ZIP 完整性检查通过；APK 包含 arm64-v8a/x86/x86_64 Cubism Core JNI，未发现 moc3、model3、physics3、exp3、motion3 或 `assets/` 下模型贴图。
+
 ## 下一步顺序
 
-1. 推送首个完整根提交并运行GitHub Actions。
-2. 若编译失败，只修直接编译错误并保留失败记录。
-3. 下载并校验APK，再由用户进行模型与悬浮桌宠实机测试。
-4. 根据实机结果修正原生表达式/动作组合；在此之前不接入LLM或正式AI伴侣。
+1. 由用户安装已校验 APK，完成模型与悬浮桌宠实机测试。
+2. 根据实机结果修正原生表达式/动作组合；在此之前不接入LLM或正式AI伴侣。
